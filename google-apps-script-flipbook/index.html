@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Flipbook</title>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- jQuery UI (Turn.js için gerekli) -->
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+  <!-- Turn.js (GitHub raw link) -->
+  <script src="https://raw.githack.com/blasten/turn.js/master/turn.min.js"></script>
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Stil dosyası -->
+  <style>
+    <?!= include('stil'); ?>
+  </style>
+</head>
+<body>
+  <!-- Yükleme göstergesi -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>PDF yükleniyor...</p>
+  </div>
+
+  <!-- Flipbook konteyneri -->
+  <div id="flipbook-container" style="display: none;">
+    <div id="flipbook"></div>
+    <div id="controls">
+      <button id="prev-btn">◀ Önceki</button>
+      <span id="page-info"></span>
+      <button id="next-btn">Sonraki ▶</button>
+    </div>
+  </div>
+
+  <script>
+    // Sayfa yüklendiğinde PDF'i al
+    $(document).ready(function() {
+      console.log('Sayfa yüklendi, PDF alınıyor...');
+      // Sunucudan PDF verilerini al
+      google.script.run
+        .withSuccessHandler(onPdfLoaded)
+        .withFailureHandler(onError)
+        .getPdfAsBase64();
+    });
+
+    /**
+     * PDF başarıyla yüklendiğinde çalışır
+     */
+    function onPdfLoaded(base64Data) {
+      console.log('PDF verisi alındı, işleniyor...');
+
+      // PDF.js worker dosyasının yolunu ayarla
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      // Base64 verisini PDF formatına dönüştür
+      var pdfData = atob(base64Data);
+      var uint8Array = new Uint8Array(pdfData.length);
+      for (var i = 0; i < pdfData.length; i++) {
+        uint8Array[i] = pdfData.charCodeAt(i);
+      }
+
+      // PDF'i yükle
+      var loadingTask = pdfjsLib.getDocument({data: uint8Array});
+
+      loadingTask.promise.then(function(pdf) {
+        console.log('PDF yüklendi, toplam sayfa:', pdf.numPages);
+        var totalPages = pdf.numPages;
+        var renderedPages = [];
+
+        // Tüm sayfaları sırayla render et
+        var renderPromise = Promise.resolve();
+
+        for (var pageNum = 1; pageNum <= totalPages; pageNum++) {
+          (function(num) {
+            renderPromise = renderPromise.then(function() {
+              return renderPage(pdf, num).then(function(pageData) {
+                renderedPages.push(pageData);
+                console.log('Sayfa render edildi:', num, '/', totalPages);
+              });
+            });
+          })(pageNum);
+        }
+
+        renderPromise.then(function() {
+          console.log('Tüm sayfalar render edildi:', renderedPages.length);
+
+          // Sayfa numarasına göre sırala
+          renderedPages.sort(function(a, b) {
+            return a.pageNum - b.pageNum;
+          });
+
+          // Sayfaları sırayla flipbook'a ekle
+          renderedPages.forEach(function(pageData, index) {
+            var pageDiv = $('<div></div>').addClass('page');
+            pageDiv.append(pageData.canvas);
+            $('#flipbook').append(pageDiv);
+            console.log('Sayfa eklendi:', index + 1);
+          });
+
+          console.log('Flipbook\'ta toplam div sayısı:', $('#flipbook > div').length);
+
+          // Yükleme göstergesini gizle
+          $('#loading').hide();
+
+          // Flipbook konteyneri göster
+          $('#flipbook-container').show();
+
+          // Turn.js'nin yüklenip yüklenmediğini kontrol et
+          if (typeof $.fn.turn !== 'function') {
+            console.error('Turn.js yüklenemedi! Kütüphane bulunamadı.');
+            $('#loading').html('<p style="color: red;">Turn.js kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.</p>').show();
+            $('#flipbook-container').hide();
+            return;
+          }
+
+          // Turn.js'yi başlat
+          try {
+            console.log('Turn.js başlatılıyor...');
+            console.log('Turn.js versiyonu:', $.fn.turn ? 'Yüklendi' : 'Yüklenmedi');
+
+            $('#flipbook').turn({
+              width: 800,
+              height: 600,
+              autoCenter: true,
+              elevation: 50,
+              gradients: true,
+              acceleration: true,
+              display: 'double',
+              duration: 1000,
+              when: {
+                turning: function(event, page, view) {
+                  console.log('Sayfa çevriliyor:', page);
+                  updatePageInfo();
+                },
+                turned: function(event, page, view) {
+                  console.log('Sayfa çevrildi:', page);
+                  updatePageInfo();
+                },
+                start: function(event, pageObject, corner) {
+                  console.log('Çevirme başladı');
+                }
+              }
+            });
+
+            console.log('Turn.js başlatıldı!');
+            console.log('Mevcut sayfa sayısı:', $('#flipbook').turn('pages'));
+
+            // Sayfa bilgisini güncelle
+            updatePageInfo();
+
+            // Kontrol butonlarını bağla
+            $('#prev-btn').click(function() {
+              $('#flipbook').turn('previous');
+            });
+
+            $('#next-btn').click(function() {
+              $('#flipbook').turn('next');
+            });
+
+            // Klavye kontrolü
+            $(document).keydown(function(e) {
+              if (e.keyCode == 37) { // Sol ok
+                $('#flipbook').turn('previous');
+              } else if (e.keyCode == 39) { // Sağ ok
+                $('#flipbook').turn('next');
+              }
+            });
+
+          } catch(e) {
+            console.error('Turn.js başlatma hatası:', e);
+          }
+        });
+      }).catch(function(error) {
+        onError(error);
+      });
+    }
+
+    /**
+     * Sayfa bilgisini günceller
+     */
+    function updatePageInfo() {
+      var currentPage = $('#flipbook').turn('page');
+      var totalPages = $('#flipbook').turn('pages');
+      $('#page-info').text('Sayfa ' + currentPage + ' / ' + totalPages);
+    }
+
+    /**
+     * Bir PDF sayfasını render eder
+     */
+    function renderPage(pdf, pageNum) {
+      return pdf.getPage(pageNum).then(function(page) {
+        // Canvas oluştur
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+
+        // Sayfa boyutlarını ayarla (sayfaya göre dinamik scale)
+        var viewport = page.getViewport({scale: 1.0});
+
+        // Sayfayı 400x600'e sığacak şekilde ölçekle
+        var scale = Math.min(400 / viewport.width, 600 / viewport.height);
+        viewport = page.getViewport({scale: scale});
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        // Sayfayı render et
+        var renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+
+        return page.render(renderContext).promise.then(function() {
+          return {
+            pageNum: pageNum,
+            canvas: canvas
+          };
+        });
+      });
+    }
+
+    /**
+     * Hata oluştuğunda çalışır
+     */
+    function onError(error) {
+      console.error('Hata oluştu:', error);
+      $('#loading').html('<p style="color: red;">Hata: ' + error.message + '</p>');
+    }
+  </script>
+</body>
+</html>

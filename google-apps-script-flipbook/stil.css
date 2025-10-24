@@ -1,0 +1,165 @@
+/* Genel sayfa stilleri */
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Yükleme göstergesi */
+#loading {
+  text-align: center;
+  color: white;
+  font-size: 18px;
+}
+
+/* Yükleme spinner */
+.spinner {
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top: 5px solid white;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Flipbook ana konteyneri */
+#flipbook-container {
+  text-align: center;
+}
+
+/* Flipbook konteyneri */
+#flipbook {
+  width: 800px;
+  height: 600px;
+  margin: 0 auto 20px auto;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+  background: white;
+  position: relative;
+}
+
+/* Sayfa stilleri */
+.page {
+  width: 400px;
+  height: 600px;
+  background: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Canvas stilleri */
+.page canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Turn.js sayfa gölgeleri ve efektleri */
+.turn-page {
+  background: white;
+}
+
+.turn-page-wrapper {
+  perspective: 2000px;
+}
+
+/* Turn.js hard sayfalar */
+.hard {
+  background: #ccc !important;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Sayfa çevirme efekti */
+.even .gradient {
+  background: linear-gradient(left, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.odd .gradient {
+  background: linear-gradient(right, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+/* Kontrol butonları */
+#controls {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+#controls button {
+  background: white;
+  border: 2px solid #667eea;
+  color: #667eea;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+#controls button:hover {
+  background: #667eea;
+  color: white;
+  transform: scale(1.05);
+}
+
+#controls button:active {
+  transform: scale(0.95);
+}
+
+#page-info {
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  min-width: 150px;
+}
+
+/* Responsive tasarım */
+@media (max-width: 820px) {
+  #flipbook {
+    width: 600px;
+    height: 450px;
+  }
+
+  .page {
+    width: 300px;
+    height: 450px;
+  }
+}
+
+@media (max-width: 620px) {
+  #flipbook {
+    width: 400px;
+    height: 300px;
+  }
+
+  .page {
+    width: 200px;
+    height: 300px;
+  }
+
+  #controls button {
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+
+  #page-info {
+    font-size: 16px;
+  }
+}
