@@ -40,32 +40,26 @@ body {
 
 /* Flipbook ana konteyneri */
 #flipbook-container {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
+  padding: 20px 0;
 }
 
 /* Flipbook wrapper - butonlar için */
 #flipbook-wrapper {
-  display: flex;
-  align-items: center;
   gap: 30px;
-  justify-content: center;
 }
 
 /* Flipbook konteyneri */
 #flipbook {
   width: 1400px;
   height: 900px;
-  margin: 0;
+  margin: 0 auto;
   box-shadow: 0 10px 50px rgba(255, 255, 255, 0.3);
   background: white;
   position: relative;
   overflow: hidden;
   touch-action: pan-y pinch-zoom;
   -webkit-user-drag: none;
+  transition: all 0.3s ease;
 }
 
 /* Sayfa stilleri */
@@ -82,13 +76,20 @@ body {
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
+  position: relative;
+  transition: all 0.3s ease;
 }
 
 /* Canvas stilleri */
 .page canvas {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto !important;
+  height: auto !important;
   object-fit: contain;
+  display: block;
+  margin: 0 auto;
+  padding: 0;
 }
 
 /* Turn.js sayfa gölgeleri ve efektleri */
@@ -143,57 +144,10 @@ body {
   transform: scale(0.95);
 }
 
-/* Kontrol butonları (alt kısım) */
-#controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-#page-info {
-  color: white;
-  font-size: 20px;
-  font-weight: bold;
-  min-width: 180px;
-}
-
-/* Müzik kontrolleri */
-#music-controls {
-  margin-top: 15px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 15px;
-}
-
-#music-controls button {
-  background: #444;
-  border: 2px solid #fff;
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.3s ease;
-}
-
-#music-controls button:hover {
-  background: #fff;
-  color: #000;
-}
-
-#volume-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: white;
-}
-
-#volume-slider {
-  width: 100px;
-  cursor: pointer;
+/* Müzik kontrolleri - Bootstrap button override */
+#music-controls .btn {
+  min-width: 100px;
+  font-weight: 600;
 }
 
 /* Responsive tasarım */
