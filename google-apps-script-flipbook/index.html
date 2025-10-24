@@ -2,7 +2,10 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>PDF Flipbook</title>
 
   <!-- jQuery -->
@@ -31,13 +34,34 @@
 
   <!-- Flipbook konteyneri -->
   <div id="flipbook-container" style="display: none;">
-    <div id="flipbook"></div>
+    <!-- Flipbook ve yan butonlar -->
+    <div id="flipbook-wrapper">
+      <button id="prev-btn" class="side-button">◀</button>
+      <div id="flipbook"></div>
+      <button id="next-btn" class="side-button">▶</button>
+    </div>
+
+    <!-- Alt kontroller -->
     <div id="controls">
-      <button id="prev-btn">◀ Önceki</button>
       <span id="page-info"></span>
-      <button id="next-btn">Sonraki ▶</button>
+    </div>
+
+    <!-- Müzik kontrolleri (gizli - isteğe bağlı) -->
+    <div id="music-controls" style="display: none;">
+      <button id="play-music-btn">🎵 Müzik Çal</button>
+      <button id="pause-music-btn" style="display: none;">⏸ Duraklat</button>
+      <div id="volume-control">
+        <span>🔊 Ses:</span>
+        <input type="range" id="volume-slider" min="0" max="100" value="50">
+        <span id="volume-label">50%</span>
+      </div>
     </div>
   </div>
+
+  <!-- Müzik elementi (gizli) -->
+  <audio id="background-music" loop>
+    <source src="" type="audio/mpeg">
+  </audio>
 
   <script>
     // Sayfa yüklendiğinde PDF'i al
@@ -126,14 +150,50 @@
             console.log('Turn.js başlatılıyor...');
             console.log('Turn.js versiyonu:', $.fn.turn ? 'Yüklendi' : 'Yüklenmedi');
 
+            // Ekran boyutuna göre flipbook boyutunu ve görünümünü ayarla
+            var screenWidth = $(window).width();
+            var flipbookWidth = 1400;
+            var flipbookHeight = 900;
+            var displayMode = 'double';
+
+            // Responsive boyutlar
+            if (screenWidth <= 360) {
+              flipbookWidth = screenWidth;
+              flipbookHeight = Math.min(screenWidth * 1.3, window.innerHeight * 0.65);
+              displayMode = 'single';
+            } else if (screenWidth <= 500) {
+              flipbookWidth = screenWidth;
+              flipbookHeight = Math.min(screenWidth * 1.2, window.innerHeight * 0.7);
+              displayMode = 'single';
+            } else if (screenWidth <= 650) {
+              flipbookWidth = Math.min(500, screenWidth - 80);
+              flipbookHeight = 400;
+              displayMode = 'double';
+            } else if (screenWidth <= 750) {
+              flipbookWidth = 600;
+              flipbookHeight = 450;
+            } else if (screenWidth <= 950) {
+              flipbookWidth = 700;
+              flipbookHeight = 500;
+            } else if (screenWidth <= 1050) {
+              flipbookWidth = 900;
+              flipbookHeight = 600;
+            } else if (screenWidth <= 1250) {
+              flipbookWidth = 1000;
+              flipbookHeight = 650;
+            } else if (screenWidth <= 1500) {
+              flipbookWidth = 1200;
+              flipbookHeight = 750;
+            }
+
             $('#flipbook').turn({
-              width: 800,
-              height: 600,
+              width: flipbookWidth,
+              height: flipbookHeight,
               autoCenter: true,
               elevation: 50,
               gradients: true,
               acceleration: true,
-              display: 'double',
+              display: displayMode,
               duration: 1000,
               when: {
                 turning: function(event, page, view) {
@@ -174,6 +234,69 @@
               }
             });
 
+            // Flipbook'a tıklama/dokunma ile ileri/geri gitme
+            $('#flipbook').on('click touchend', function(e) {
+              e.preventDefault();
+
+              var flipbookWidth = $(this).width();
+              var clickX;
+
+              // Touch veya mouse event'i al
+              if (e.type === 'touchend') {
+                var touch = e.originalEvent.changedTouches[0];
+                clickX = touch.pageX - $(this).offset().left;
+              } else {
+                clickX = e.pageX - $(this).offset().left;
+              }
+
+              // Sol yarıya tıklandıysa/dokunulursa geri git
+              if (clickX < flipbookWidth / 2) {
+                $('#flipbook').turn('previous');
+                console.log('Sol tarafa dokunuldu - önceki sayfa');
+              }
+              // Sağ yarıya tıklandıysa/dokunulursa ileri git
+              else {
+                $('#flipbook').turn('next');
+                console.log('Sağ tarafa dokunuldu - sonraki sayfa');
+              }
+            });
+
+            // Hover efekti için cursor değiştir
+            $('#flipbook').css('cursor', 'pointer');
+
+            // Swipe gesture desteği (mobil için)
+            var touchStartX = 0;
+            var touchEndX = 0;
+
+            $('#flipbook').on('touchstart', function(e) {
+              touchStartX = e.originalEvent.changedTouches[0].screenX;
+            });
+
+            $('#flipbook').on('touchmove', function(e) {
+              touchEndX = e.originalEvent.changedTouches[0].screenX;
+            });
+
+            $('#flipbook').on('touchend', function(e) {
+              // Swipe uzunluğu kontrolü (minimum 50px)
+              var swipeLength = Math.abs(touchEndX - touchStartX);
+
+              if (swipeLength > 50) {
+                // Sağa kaydırma (swipe right) - önceki sayfa
+                if (touchEndX > touchStartX) {
+                  $('#flipbook').turn('previous');
+                  console.log('Sağa kaydırıldı - önceki sayfa');
+                }
+                // Sola kaydırma (swipe left) - sonraki sayfa
+                else {
+                  $('#flipbook').turn('next');
+                  console.log('Sola kaydırıldı - sonraki sayfa');
+                }
+              }
+            });
+
+            // Müzik kontrollerini başlat
+            initMusicControls();
+
           } catch(e) {
             console.error('Turn.js başlatma hatası:', e);
           }
@@ -204,8 +327,8 @@
         // Sayfa boyutlarını ayarla (sayfaya göre dinamik scale)
         var viewport = page.getViewport({scale: 1.0});
 
-        // Sayfayı 400x600'e sığacak şekilde ölçekle
-        var scale = Math.min(400 / viewport.width, 600 / viewport.height);
+        // Sayfayı 700x900'e sığacak şekilde ölçekle
+        var scale = Math.min(700 / viewport.width, 900 / viewport.height);
         viewport = page.getViewport({scale: scale});
 
         canvas.width = viewport.width;
@@ -232,6 +355,75 @@
     function onError(error) {
       console.error('Hata oluştu:', error);
       $('#loading').html('<p style="color: red;">Hata: ' + error.message + '</p>');
+    }
+
+    /**
+     * Müzik kontrollerini başlatır
+     */
+    function initMusicControls() {
+      var audio = document.getElementById('background-music');
+      var playBtn = $('#play-music-btn');
+      var pauseBtn = $('#pause-music-btn');
+      var volumeSlider = $('#volume-slider');
+      var volumeLabel = $('#volume-label');
+
+      // Müzik dosyasını base64 olarak sunucudan al
+      google.script.run
+        .withSuccessHandler(function(musicData) {
+          if (musicData && musicData !== '') {
+            audio.src = musicData;
+            console.log('Müzik yüklendi (base64)');
+            $('#music-controls').show(); // Müzik yüklendiyse kontrolü göster
+          } else {
+            console.log('Müzik dosyası ayarlanmamış.');
+            playBtn.prop('disabled', true);
+            playBtn.text('🎵 Müzik Yok');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Müzik alınamadı:', error);
+        })
+        .getMusicAsBase64();
+
+      // Müzik çal butonu
+      playBtn.click(function() {
+        if (audio.src && audio.src !== '' && audio.src !== window.location.href) {
+          audio.play().then(function() {
+            playBtn.hide();
+            pauseBtn.show();
+            console.log('Müzik çalıyor...');
+          }).catch(function(error) {
+            console.error('Müzik çalınamadı:', error);
+            alert('Müzik çalınamadı. Lütfen dosyanın paylaşım izinlerini kontrol edin.');
+          });
+        } else {
+          alert('Lütfen önce Kod.gs dosyasında müzik dosyası ID\'sini ayarlayın ve dosyayı herkese açık olarak paylaşın!');
+        }
+      });
+
+      // Müzik duraklat butonu
+      pauseBtn.click(function() {
+        audio.pause();
+        pauseBtn.hide();
+        playBtn.show();
+        console.log('Müzik duraklatıldı.');
+      });
+
+      // Ses seviyesi kontrolü
+      volumeSlider.on('input', function() {
+        var volume = $(this).val();
+        audio.volume = volume / 100;
+        volumeLabel.text(volume + '%');
+      });
+
+      // Başlangıç ses seviyesi
+      audio.volume = 0.5;
+
+      // Müzik bitince yeniden başlat (loop zaten var ama yine de)
+      audio.addEventListener('ended', function() {
+        audio.currentTime = 0;
+        audio.play();
+      });
     }
   </script>
 </body>
