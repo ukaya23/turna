@@ -120,6 +120,25 @@
           // Sayfaları sırayla flipbook'a ekle
           renderedPages.forEach(function(pageData, index) {
             var pageDiv = $('<div></div>').addClass('page');
+
+            // Div'in boyutunu hesaplanan sayfa boyutuna ayarla
+            pageDiv.css({
+              'width': pageData.pageWidth + 'px',
+              'height': pageData.pageHeight + 'px',
+              'display': 'flex',
+              'justify-content': index % 2 === 0 ? 'flex-start' : 'flex-end', // Sol sayfalar sola, sağ sayfalar sağa
+              'align-items': 'center',
+              'overflow': 'visible'
+            });
+
+            // Canvas'ın yüksekliği %100 olsun, genişliği otomatik
+            $(pageData.canvas).css({
+              'height': '100%',
+              'width': 'auto',
+              'object-fit': 'contain',
+              'display': 'block'
+            });
+
             pageDiv.append(pageData.canvas);
             $('#flipbook').append(pageDiv);
             console.log('Sayfa eklendi:', index + 1);
@@ -386,7 +405,9 @@
         return page.render(renderContext).promise.then(function() {
           return {
             pageNum: pageNum,
-            canvas: canvas
+            canvas: canvas,
+            pageWidth: pageWidth,
+            pageHeight: pageHeight
           };
         });
       });
