@@ -39,23 +39,19 @@
   </div>
 
   <!-- Flipbook konteyneri -->
-  <div id="flipbook-container" class="container-fluid" style="display: none;">
-    <div class="row justify-content-center">
-      <div class="col-auto">
-        <!-- Flipbook ve yan butonlar -->
-        <div id="flipbook-wrapper" class="d-flex align-items-center justify-content-center">
-          <button id="prev-btn" class="side-button">◀</button>
-          <div id="flipbook"></div>
-          <button id="next-btn" class="side-button">▶</button>
-        </div>
-
-        <!-- Müzik kontrolleri (yanyana - gizli) -->
-        <div id="music-controls" class="d-flex justify-content-center gap-2 mt-3" style="display: none !important;">
-          <button id="play-music-btn" class="btn btn-light btn-sm">▶ Çal</button>
-          <button id="pause-music-btn" class="btn btn-light btn-sm" style="display: none;">⏸ Duraklat</button>
-        </div>
-      </div>
+  <div id="flipbook-container" style="display: none;">
+    <!-- Flipbook ve yan butonlar -->
+    <div id="flipbook-wrapper" class="d-flex align-items-center justify-content-center">
+      <button id="prev-btn" class="side-button">◀</button>
+      <div id="flipbook"></div>
+      <button id="next-btn" class="side-button">▶</button>
     </div>
+  </div>
+
+  <!-- Müzik kontrolleri (ayrı) -->
+  <div id="music-controls" class="d-flex justify-content-center gap-2" style="display: none !important; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+    <button id="play-music-btn" class="btn btn-light btn-sm">▶ Çal</button>
+    <button id="pause-music-btn" class="btn btn-light btn-sm" style="display: none;">⏸ Duraklat</button>
   </div>
 
   <!-- Müzik elementi (gizli) -->
