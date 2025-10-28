@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
@@ -40,11 +40,8 @@
 
   <!-- Flipbook konteyneri -->
   <div id="flipbook-container" style="display: none;">
-    <!-- Flipbook ve yan butonlar -->
     <div id="flipbook-wrapper" class="d-flex align-items-center justify-content-center">
-      <button id="prev-btn" class="side-button">◀</button>
       <div id="flipbook"></div>
-      <button id="next-btn" class="side-button">▶</button>
     </div>
   </div>
 
@@ -60,27 +57,50 @@
   </audio>
 
   <script>
-    // Sayfa yüklendiğinde PDF'i al
+    // Sayfa yüklendiğinde PDF'i al (öncelikle localStorage önbelleğini kontrol et)
     $(document).ready(function() {
-      console.log('Sayfa yüklendi, PDF alınıyor...');
-      // Sunucudan PDF verilerini al
-      google.script.run
-        .withSuccessHandler(onPdfLoaded)
-        .withFailureHandler(onError)
-        .getPdfAsBase64();
+      console.log('Sayfa yüklendi...');
+
+      try {
+        var cached = localStorage.getItem('flipbook_pdf_base64');
+      } catch (e) {
+        console.warn('LocalStorage okunamadı:', e);
+        var cached = null;
+      }
+
+      if (cached) {
+        console.log('Önbelleğe alınmış PDF bulundu, kullanılıyor...');
+        // fromCache flag ile çağır
+        onPdfLoaded(cached, {fromCache: true});
+      } else {
+        console.log('PDF sunucudan alınıyor...');
+        // Sunucudan PDF verilerini al
+        google.script.run
+          .withSuccessHandler(function(base64) {
+            try {
+              localStorage.setItem('flipbook_pdf_base64', base64);
+            } catch (e) {
+              console.warn('LocalStorage kaydetme başarısız:', e);
+            }
+            onPdfLoaded(base64, {fromCache: false});
+          })
+          .withFailureHandler(onError)
+          .getPdfAsBase64();
+      }
     });
 
     /**
      * PDF başarıyla yüklendiğinde çalışır
      */
-    function onPdfLoaded(base64Data) {
+    function onPdfLoaded(base64Data, opts) {
+      opts = opts || {};
       console.log('PDF verisi alındı, işleniyor...');
 
       // PDF.js worker dosyasının yolunu ayarla
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-      // Base64 verisini PDF formatına dönüştür
+  // Base64 verisini PDF formatına dönüştür
       var pdfData = atob(base64Data);
       var uint8Array = new Uint8Array(pdfData.length);
       for (var i = 0; i < pdfData.length; i++) {
@@ -264,23 +284,36 @@
             // Hover efekti için cursor değiştir
             $('#flipbook').css('cursor', 'pointer');
 
-            // Touch eventlerini devre dışı bırak (swipe yok)
+            // Touch eventleri: tek parmak hareketlerini (swipe) daha sıkı kontrol et,
+            // fakat çoklu dokunuşların (pinch-to-zoom) çalışmasına izin ver.
             $('#flipbook').on('touchstart touchmove touchend', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
+              var touches = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches.length : 0;
+              // Eğer tek parmaklı touchmove ise sayfayı kaydırmasını önle (swipe yerine tıklama ile sayfa değişsin)
+              if (e.type === 'touchmove' && touches === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+              // Çoklu dokunuşlarda (touches >= 2) hiçbir şey yapma — böylece pinch-to-zoom çalışır.
             });
 
             // Müzik kontrollerini başlat
             initMusicControls();
 
-            // Window resize event - Otomatik yeniden boyutlandırma
-            var resizeTimer;
-            $(window).on('resize', function() {
-              clearTimeout(resizeTimer);
-              resizeTimer = setTimeout(function() {
+            // Window resize ve orientation change eventi - Otomatik yeniden boyutlandırma
+            function handleResize() {
+              clearTimeout(window.resizeTimer);
+              window.resizeTimer = setTimeout(function() {
                 resizeFlipbook();
+                // Eğer turn.js başlatılmışsa, mevcut sayfayı yeniden göster (refresh)
+                if ($('#flipbook').turn('is')) {
+                  var currentPage = $('#flipbook').turn('page');
+                  $('#flipbook').turn('display', $('#flipbook').turn('display'));
+                  $('#flipbook').turn('page', currentPage);
+                }
               }, 250);
-            });
+            }
+            
+            $(window).on('resize orientationchange', handleResize);
 
           } catch(e) {
             console.error('Turn.js başlatma hatası:', e);
@@ -296,38 +329,37 @@
      */
     function resizeFlipbook() {
       var screenWidth = $(window).width();
-      var flipbookWidth = 1400;
-      var flipbookHeight = 900;
+      var screenHeight = $(window).height();
+      var containerWidth = $('#flipbook-container').width();
+      var containerHeight = $('#flipbook-container').height();
       var displayMode = 'double';
 
-      // Responsive boyutlar
-      if (screenWidth <= 360) {
-        flipbookWidth = screenWidth;
-        flipbookHeight = Math.min(screenWidth * 1.3, window.innerHeight * 0.65);
+      // Ekran genişliğine göre görünüm modunu belirle
+      if (screenWidth <= 500) {
         displayMode = 'single';
-      } else if (screenWidth <= 500) {
-        flipbookWidth = screenWidth;
-        flipbookHeight = Math.min(screenWidth * 1.2, window.innerHeight * 0.7);
-        displayMode = 'single';
-      } else if (screenWidth <= 650) {
-        flipbookWidth = Math.min(500, screenWidth - 80);
-        flipbookHeight = 400;
-        displayMode = 'double';
-      } else if (screenWidth <= 750) {
-        flipbookWidth = 600;
-        flipbookHeight = 450;
-      } else if (screenWidth <= 950) {
-        flipbookWidth = 700;
-        flipbookHeight = 500;
-      } else if (screenWidth <= 1050) {
-        flipbookWidth = 900;
-        flipbookHeight = 600;
-      } else if (screenWidth <= 1250) {
-        flipbookWidth = 1000;
-        flipbookHeight = 650;
-      } else if (screenWidth <= 1500) {
-        flipbookWidth = 1200;
-        flipbookHeight = 750;
+      }
+
+      // Sayfanın aspect ratio'sunu koru ve ekrana sığdır
+      var flipbookWidth, flipbookHeight;
+      
+      if (displayMode === 'single') {
+        // Tek sayfa modunda
+        flipbookWidth = Math.min(screenWidth * 0.9, containerWidth * 0.9);
+        flipbookHeight = Math.min(flipbookWidth * 1.4, screenHeight * 0.8);
+      } else {
+        // Çift sayfa modunda
+        flipbookWidth = Math.min(screenWidth * 0.85, containerWidth * 0.85);
+        flipbookHeight = Math.min(flipbookWidth * 0.7, screenHeight * 0.8);
+      }
+      
+      // Yükseklik sınırlaması aşılıyorsa, yüksekliğe göre genişliği ayarla
+      if (flipbookHeight > screenHeight * 0.8) {
+        flipbookHeight = screenHeight * 0.8;
+        if (displayMode === 'single') {
+          flipbookWidth = flipbookHeight / 1.4;
+        } else {
+          flipbookWidth = flipbookHeight / 0.7;
+        }
       }
 
       console.log('Resize: ' + screenWidth + 'px → Flipbook: ' + flipbookWidth + 'x' + flipbookHeight);
